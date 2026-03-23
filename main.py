@@ -5,39 +5,39 @@ from json_processing import process_file
 from graph_utils import plot_sorted_bar_chart
 
 
-SOURCE_JSON_LIST = [
-    'anaxa_arranged_m_1.json',
-    'anaxa_arranged_m_2.json',
-    'anaxa_cuntboy.json',
-    'anaxa_slowburn.json',
-    'blade.json',
-    'blade_tyrant.json',
-    'feixiao.json',
-    'jingyuan_prince.json',
-    'jingyuan_teacher.json'
-]
+JSON_DIR = "./jsons"
 
 # папка с текущей датой
 GRAPH_DIR = datetime.today().strftime("%Y.%m.%d")
 
 TOP_N = 10
 
-def remove_json_extension(filename: str) -> str:
+def format_character_label(name: str, file_id: str, max_len: int = 15) -> str:
     """
-    Удаляет расширение .json из имени файла.
+    Обрезает имя персонажа и добавляет id.
 
     Parameters
     ----------
-    filename : str
-        Имя файла с расширением.
+    name : str
+        Имя персонажа (character.name)
+    file_id : str
+        ID (например имя файла без .json)
+    max_len : int
+        Максимальная длина имени
 
     Returns
     -------
     str
-        Имя файла без .json
+        Отформатированная строка
     """
-    return os.path.splitext(filename)[0]
 
+    if len(name) > max_len:
+        name = name[:max_len] + "...\n"
+
+    return f"{name} ({file_id})"
+
+def remove_json_extension(filename: str) -> str:
+    return os.path.splitext(filename)[0]
 
 def get_top_n(filenames, values, n):
     """
@@ -70,48 +70,57 @@ def get_top_n(filenames, values, n):
 def main():
     os.makedirs(GRAPH_DIR, exist_ok=True)
 
-    filenames = []
+    character_names = []
     all_words_stats = []
     not_bot_words_stats = []
 
-    for filename in SOURCE_JSON_LIST:
-        all_count, not_bot_count = process_file(filename)
+    for filename in os.listdir(JSON_DIR):
+        if not filename.endswith(".json"):
+            continue
 
-        filenames.append(filename)
-        all_words_stats.append(all_count)
-        not_bot_words_stats.append(not_bot_count)
+        filepath = os.path.join(JSON_DIR, filename)
 
-        print(f"{filename}")
-        print(f"  all_words: {all_count}")
-        print(f"  not_bot_words: {not_bot_count}\n")
+        try:
+            file_id = remove_json_extension(filename)
 
-    # убираем .json для подписей
-    clean_filenames = [remove_json_extension(f) for f in filenames]
+            character_name, all_count, not_bot_count = process_file(filepath)
+
+            label = format_character_label(character_name, file_id)
+
+            character_names.append(label)
+            all_words_stats.append(all_count)
+            not_bot_words_stats.append(not_bot_count)
+
+            print(f"{label}")
+            print(f"  all_words: {all_count}")
+            print(f"  not_bot_words: {not_bot_count}\n")
+
+        except Exception as e:
+            print(f"[ERROR] {filename}: {e}")
 
     # берём топ-10
-    top_all_files, top_all_values = get_top_n(
-        clean_filenames,
+    top_all_names, top_all_values = get_top_n(
+        character_names,
         all_words_stats,
         TOP_N
     )
 
-    top_notbot_files, top_notbot_values = get_top_n(
-        clean_filenames,
+    top_notbot_names, top_notbot_values = get_top_n(
+        character_names,
         not_bot_words_stats,
         TOP_N
     )
 
     # график all_words
     plot_sorted_bar_chart(
-        top_all_files,
+        top_all_names,
         top_all_values,
         "Количество слов (all_words)",
         os.path.join(GRAPH_DIR, "all_words.png")
     )
 
-    # график not_bot_words
     plot_sorted_bar_chart(
-        top_notbot_files,
+        top_notbot_names,
         top_notbot_values,
         "Количество слов (not_bot_words)",
         os.path.join(GRAPH_DIR, "not_bot_words.png")

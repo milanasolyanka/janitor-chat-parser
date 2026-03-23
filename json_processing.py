@@ -27,6 +27,8 @@ def process_file(filename: str) -> tuple[int, int]:
     with open(filename, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    character_name = data.get("character", {}).get("name", "Unknown")
+
     chat_messages = data.get("chatMessages", [])
 
     all_words_count = 0
@@ -43,4 +45,4 @@ def process_file(filename: str) -> tuple[int, int]:
         if msg.get("is_bot") is False:
             not_bot_words_count += len(words)
 
-    return all_words_count, not_bot_words_count
+    return character_name, all_words_count, not_bot_words_count
